@@ -1,81 +1,80 @@
 import cv2
 import mediapipe as mp
-import math as m
-import numpy as np
+import math
 import streamlit as st
-from PIL import Image
+
 
 # Calculate distance
 def findDistance(x1, y1, x2, y2):
-    dist = m.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+    dist = math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
     return dist
 
-# Calculate angle
+
+# Calculate angle.
+def findAngle(x1, y1, x2, y2):
+    theta = math.acos((y2 - y1) * (-y1) / (math.sqrt(
+        (x2 - x1) ** 2 + (y2 - y1) ** 2) * y1))
+    degree = int(180 / math.pi) * theta
+    return degree
+
+
 def calculateAngle(landmark1, landmark2, landmark3):
     x1, y1 = landmark1
     x2, y2 = landmark2
     x3, y3 = landmark3
 
-    angle = m.degrees(m.atan2(y3 - y2, x3 - x2) - m.atan2(y1 - y2, x1 - x2))
+    angle = math.degrees(math.atan2(y3 - y2, x3 - x2) - math.atan2(y1 - y2, x1 - x2))
 
     if angle < 0:
         angle += 360
 
     return angle
 
-# Main function to process video
-def process_video(file_name):
-    cap = cv2.VideoCapture(file_name)
 
-    if not cap.isOpened():
-        st.error("Error opening video file.")
-        return
-
-    # Read the video
-    video_bytes = file_name.read()
-
-    # Play the video
-    st.video(video_bytes)
+# Initialize mediapipe pose class.
+mpDraw = mp.solutions.drawing_utils
+mpPose = mp.solutions.pose
+pose = mpPose.Pose(static_image_mode=False, min_detection_confidence=0.5, model_complexity=1)
 
 # Streamlit app
-def main():
-    st.title("Yoga Pose Analysis")
+st.title('Yoga Pose Analysis')
 
-    option = st.radio("Select Source:", ("File Path", "Upload Video", "Webcam"))
+# Upload video file
+uploaded_file = st.file_uploader("Upload a video file", type=["mp4"])
 
-    if option == "File Path":
-        file_name = st.text_input("Enter the path to the video file:")
-        if not file_name:
-            st.warning("Please enter the path to the video file.")
-            return
-        process_video(file_name)
+if uploaded_file is not None:
+    file_bytes = uploaded_file.read()
+    st.video(file_bytes)
 
-    elif option == "Upload Video":
-        uploaded_file = st.file_uploader("Upload Video File", type=["mp4"])
-        if uploaded_file is not None:
-            process_video(uploaded_file)
+    cap = cv2.VideoCapture(uploaded_file)
+    landmarks = []
 
-    elif option == "Webcam":
-        cap = cv2.VideoCapture(0)
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if not ret:
-                break
+    while cap.isOpened():
+        success, image = cap.read()
+        if not success:
+            break
 
-            # Process the frame
-            # You can integrate your existing code for pose detection here
+        keypoints = pose.process(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
-            # Convert frame to RGB
-            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        if keypoints.pose_landmarks:
+            mpDraw.draw_landmarks(image, keypoints.pose_landmarks, mpPose.POSE_CONNECTIONS)
 
-            # Display the processed frame
-            st.image(rgb_frame, channels="RGB")
+            landmarks = [(int(landmark.x * image.shape[1]), int(landmark.y * image.shape[0])) for landmark in
+                         keypoints.pose_landmarks.landmark]
 
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
+        if len(landmarks) > 0:
+            # Calculate angles
+            left_knee_angle = calculateAngle(landmarks[mpPose.PoseLandmark.LEFT_HIP.value],
+                                              landmarks[mpPose.PoseLandmark.LEFT_KNEE.value],
+                                              landmarks[mpPose.PoseLandmark.LEFT_ANKLE.value])
 
-        cap.release()
-        cv2.destroyAllWindows()
+            right_knee_angle = calculateAngle(landmarks[mpPose.PoseLandmark.RIGHT_HIP.value],
+                                               landmarks[mpPose.PoseLandmark.RIGHT_KNEE.value],
+                                               landmarks[mpPose.PoseLandmark.RIGHT_ANKLE.value])
 
-if __name__ == "__main__":
-    main()
+            # Display angles
+            st.write('Left Knee Angle:', round(left_knee_angle, 2))
+            st.write('Right Knee Angle:', round(right_knee_angle, 2))
+
+    cap.release()
