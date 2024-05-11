@@ -34,8 +34,12 @@ def main():
     uploaded_file = st.sidebar.file_uploader("Upload video", type=["mp4", "avi", "mov"])
 
     if uploaded_file is not None:
-        file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
-        cap = cv2.VideoCapture(file_bytes)
+        # Save the uploaded video to a temporary file
+        with NamedTemporaryFile(delete=False) as temp_file:
+            temp_file.write(uploaded_file.read())
+            temp_file_path = temp_file.name
+
+        cap = cv2.VideoCapture(temp_file_path)
         stframe = st.empty()
 
         mpDraw = mp.solutions.drawing_utils
@@ -100,6 +104,10 @@ def main():
 
             stframe.image(image, channels="BGR")
 
+        # Close the temporary file after processing
+        cap.release()
+        cv2.destroyAllWindows()
+        st.sidebar.text("Uploaded video processed successfully.")
 
 if __name__ == "__main__":
     main()
