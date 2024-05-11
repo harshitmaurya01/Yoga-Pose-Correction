@@ -3,6 +3,7 @@ import mediapipe as mp
 import math as m
 import numpy as np
 import streamlit as st
+from PIL import Image
 
 # Calculate distance
 def findDistance(x1, y1, x2, y2):
@@ -30,20 +31,11 @@ def process_video(file_name):
         st.error("Error opening video file.")
         return
 
-    while cap.isOpened():
-        success, frame = cap.read()
-        if not success:
-            st.warning("End of video.")
-            break
+    # Read the video
+    video_bytes = file_name.read()
 
-        # Convert frame to RGB
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-        # Process the frame
-        # You can integrate your existing code for pose detection here
-
-        # Display the processed frame
-        st.image(rgb_frame, channels="RGB")
+    # Play the video
+    st.video(video_bytes)
 
 # Streamlit app
 def main():
@@ -61,10 +53,7 @@ def main():
     elif option == "Upload Video":
         uploaded_file = st.file_uploader("Upload Video File", type=["mp4"])
         if uploaded_file is not None:
-            temp_file_path = "temp_video.mp4"
-            with open(temp_file_path, "wb") as f:
-                f.write(uploaded_file.getvalue())
-            process_video(temp_file_path)
+            process_video(uploaded_file)
 
     elif option == "Webcam":
         cap = cv2.VideoCapture(0)
