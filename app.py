@@ -26,21 +26,17 @@ pose = mpPose.Pose(static_image_mode=False, min_detection_confidence=0.5, model_
 # Streamlit app
 st.title('Yoga Pose Analysis')
 
-# Option to select video source
-option = st.radio("Select video source:", ('Live Video', 'Upload Video'))
+# Upload video file
+uploaded_file = st.file_uploader("Upload a video file", type=["mp4"])
 
-if option == 'Live Video':
-    cap = cv2.VideoCapture(0)
-else:
-    uploaded_file = st.file_uploader("Upload a video file", type=["mp4"])
+if uploaded_file is not None:
+    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+        temp_file.write(uploaded_file.read())
 
-    if uploaded_file is not None:
-        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-            temp_file.write(uploaded_file.read())
+    cap = cv2.VideoCapture(temp_file.name)
+    
+    landmarks = []
 
-        cap = cv2.VideoCapture(temp_file.name)
-
-if 'cap' in locals():
     while cap.isOpened():
         success, image = cap.read()
         if not success:
@@ -55,23 +51,18 @@ if 'cap' in locals():
             landmarks = [(int(landmark.x * image.shape[1]), int(landmark.y * image.shape[0])) for landmark in
                          keypoints.pose_landmarks.landmark]
 
-            if len(landmarks) > 0:
-                # Calculate angles
-                left_knee_angle = calculateAngle(landmarks[mpPose.PoseLandmark.LEFT_HIP.value],
-                                                  landmarks[mpPose.PoseLandmark.LEFT_KNEE.value],
-                                                  landmarks[mpPose.PoseLandmark.LEFT_ANKLE.value])
+        if len(landmarks) > 0:
+            # Calculate angles
+            left_knee_angle = calculateAngle(landmarks[mpPose.PoseLandmark.LEFT_HIP.value],
+                                              landmarks[mpPose.PoseLandmark.LEFT_KNEE.value],
+                                              landmarks[mpPose.PoseLandmark.LEFT_ANKLE.value])
 
-                right_knee_angle = calculateAngle(landmarks[mpPose.PoseLandmark.RIGHT_HIP.value],
-                                                   landmarks[mpPose.PoseLandmark.RIGHT_KNEE.value],
-                                                   landmarks[mpPose.PoseLandmark.RIGHT_ANKLE.value])
+            right_knee_angle = calculateAngle(landmarks[mpPose.PoseLandmark.RIGHT_HIP.value],
+                                               landmarks[mpPose.PoseLandmark.RIGHT_KNEE.value],
+                                               landmarks[mpPose.PoseLandmark.RIGHT_ANKLE.value])
 
-                # Display angles on video
-                cv2.putText(image, f'Left Knee Angle: {round(left_knee_angle, 2)}', (20, 50),
-                            cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
-                cv2.putText(image, f'Right Knee Angle: {round(right_knee_angle, 2)}', (20, 100),
-                            cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
-
-        # Display the resulting frame
-        st.image(image, channels="BGR")
-
+            # Display angles
+            st.write('Left Knee Angle:', round(left_knee_angle, 2))
+            st.write('Right Knee Angle:', round(right_knee_angle, 2))
+            
     cap.release()
