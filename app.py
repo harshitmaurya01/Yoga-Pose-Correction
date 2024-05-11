@@ -55,6 +55,8 @@ def main():
         output_temp_path = output_temp_file.name
         video_output = cv2.VideoWriter(output_temp_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (frame_width, frame_height))
 
+        stframe = st.empty()
+
         while cap.isOpened():
             success, image = cap.read()
             if not success:
@@ -108,6 +110,7 @@ def main():
                 st.write(time_string_bad)
 
             video_output.write(image)
+            stframe.image(image, channels="BGR")
 
         # Close the temporary files after processing
         cap.release()
