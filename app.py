@@ -2,6 +2,7 @@ import cv2
 import mediapipe as mp
 import math
 import streamlit as st
+from io import BytesIO
 
 
 # Calculate distance
@@ -10,14 +11,7 @@ def findDistance(x1, y1, x2, y2):
     return dist
 
 
-# Calculate angle.
-def findAngle(x1, y1, x2, y2):
-    theta = math.acos((y2 - y1) * (-y1) / (math.sqrt(
-        (x2 - x1) ** 2 + (y2 - y1) ** 2) * y1))
-    degree = int(180 / math.pi) * theta
-    return degree
-
-
+# Calculate angle
 def calculateAngle(landmark1, landmark2, landmark3):
     x1, y1 = landmark1
     x2, y2 = landmark2
@@ -31,7 +25,7 @@ def calculateAngle(landmark1, landmark2, landmark3):
     return angle
 
 
-# Initialize mediapipe pose class.
+# Initialize mediapipe pose class
 mpDraw = mp.solutions.drawing_utils
 mpPose = mp.solutions.pose
 pose = mpPose.Pose(static_image_mode=False, min_detection_confidence=0.5, model_complexity=1)
@@ -43,10 +37,10 @@ st.title('Yoga Pose Analysis')
 uploaded_file = st.file_uploader("Upload a video file", type=["mp4"])
 
 if uploaded_file is not None:
-    file_bytes = uploaded_file.read()
-    st.video(file_bytes)
+    video_bytes = uploaded_file.read()
+    video_bytes_io = BytesIO(video_bytes)
 
-    cap = cv2.VideoCapture(uploaded_file)
+    cap = cv2.VideoCapture(video_bytes_io)
     landmarks = []
 
     while cap.isOpened():
