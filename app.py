@@ -49,12 +49,44 @@ def process_video(file_name):
 def main():
     st.title("Yoga Pose Analysis")
 
-    file_name = st.text_input("Enter the path to the video file:")
-    if not file_name:
-        st.warning("Please enter the path to the video file.")
-        return
+    option = st.radio("Select Source:", ("File Path", "Upload Video", "Webcam"))
 
-    process_video(file_name)
+    if option == "File Path":
+        file_name = st.text_input("Enter the path to the video file:")
+        if not file_name:
+            st.warning("Please enter the path to the video file.")
+            return
+        process_video(file_name)
+
+    elif option == "Upload Video":
+        uploaded_file = st.file_uploader("Upload Video File", type=["mp4"])
+        if uploaded_file is not None:
+            temp_file_path = "temp_video.mp4"
+            with open(temp_file_path, "wb") as f:
+                f.write(uploaded_file.getvalue())
+            process_video(temp_file_path)
+
+    elif option == "Webcam":
+        cap = cv2.VideoCapture(0)
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            # Process the frame
+            # You can integrate your existing code for pose detection here
+
+            # Convert frame to RGB
+            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+            # Display the processed frame
+            st.image(rgb_frame, channels="RGB")
+
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+
+        cap.release()
+        cv2.destroyAllWindows()
 
 if __name__ == "__main__":
     main()
