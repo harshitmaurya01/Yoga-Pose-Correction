@@ -2,7 +2,7 @@ import cv2
 import mediapipe as mp
 import math
 import streamlit as st
-from io import BytesIO
+import tempfile
 
 
 # Calculate distance
@@ -37,10 +37,10 @@ st.title('Yoga Pose Analysis')
 uploaded_file = st.file_uploader("Upload a video file", type=["mp4"])
 
 if uploaded_file is not None:
-    video_bytes = uploaded_file.read()
-    video_bytes_io = BytesIO(video_bytes)
+    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+        temp_file.write(uploaded_file.read())
 
-    cap = cv2.VideoCapture(video_bytes_io)
+    cap = cv2.VideoCapture(temp_file.name)
     landmarks = []
 
     while cap.isOpened():
