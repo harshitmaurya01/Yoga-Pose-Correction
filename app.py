@@ -2,13 +2,8 @@ import cv2
 import mediapipe as mp
 import math
 import streamlit as st
+from io import BytesIO
 import tempfile
-
-
-# Calculate distance
-def findDistance(x1, y1, x2, y2):
-    dist = math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
-    return dist
 
 
 # Calculate angle
@@ -33,14 +28,21 @@ pose = mpPose.Pose(static_image_mode=False, min_detection_confidence=0.5, model_
 # Streamlit app
 st.title('Yoga Pose Analysis')
 
-# Upload video file
-uploaded_file = st.file_uploader("Upload a video file", type=["mp4"])
+# Option to select video source
+option = st.radio("Select video source:", ('Live Video', 'Upload Video'))
 
-if uploaded_file is not None:
-    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-        temp_file.write(uploaded_file.read())
+if option == 'Live Video':
+    cap = cv2.VideoCapture(0)
+else:
+    uploaded_file = st.file_uploader("Upload a video file", type=["mp4"])
 
-    cap = cv2.VideoCapture(temp_file.name)
+    if uploaded_file is not None:
+        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+            temp_file.write(uploaded_file.read())
+
+        cap = cv2.VideoCapture(temp_file.name)
+
+if 'cap' in locals():
     landmarks = []
 
     while cap.isOpened():
