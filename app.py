@@ -5,6 +5,7 @@ import streamlit as st
 from io import BytesIO
 import tempfile
 
+
 # Calculate angle
 def calculateAngle(landmark1, landmark2, landmark3):
     x1, y1 = landmark1
@@ -18,6 +19,7 @@ def calculateAngle(landmark1, landmark2, landmark3):
 
     return angle
 
+
 # Initialize mediapipe pose class
 mpDraw = mp.solutions.drawing_utils
 mpPose = mp.solutions.pose
@@ -26,15 +28,21 @@ pose = mpPose.Pose(static_image_mode=False, min_detection_confidence=0.5, model_
 # Streamlit app
 st.title('Yoga Pose Analysis')
 
-# Upload video file
-uploaded_file = st.file_uploader("Upload a video file", type=["mp4"])
+# Option to select video source
+option = st.radio("Select video source:", ('Live Video', 'Upload Video'))
 
-if uploaded_file is not None:
-    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-        temp_file.write(uploaded_file.read())
+if option == 'Live Video':
+    cap = cv2.VideoCapture(0)
+else:
+    uploaded_file = st.file_uploader("Upload a video file", type=["mp4"])
 
-    cap = cv2.VideoCapture(temp_file.name)
-    
+    if uploaded_file is not None:
+        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+            temp_file.write(uploaded_file.read())
+
+        cap = cv2.VideoCapture(temp_file.name)
+
+if 'cap' in locals():
     landmarks = []
 
     while cap.isOpened():
@@ -64,5 +72,5 @@ if uploaded_file is not None:
             # Display angles
             st.write('Left Knee Angle:', round(left_knee_angle, 2))
             st.write('Right Knee Angle:', round(right_knee_angle, 2))
-            
+
     cap.release()
