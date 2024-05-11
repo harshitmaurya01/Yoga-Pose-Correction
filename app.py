@@ -1,132 +1,101 @@
+import streamlit as st
 import cv2
 import mediapipe as mp
 import time
 import math as m
 import numpy as np
-import streamlit as st
 
-# Constants
-GOOD_POSTURE_THRESHOLD = 165
-BAD_POSTURE_THRESHOLD = 195
-KNEE_ANGLE_THRESHOLD = 30
-HIP_ANGLE_THRESHOLD = 80
-BAD_POSTURE_WARNING_TIME = 60
+# Calculate distance
+def findDistance(x1, y1, x2, y2):
+    dist = m.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+    return dist
 
-# Function to calculate distance
-def find_distance(x1, y1, x2, y2):
-    return m.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+# Calculate angle
+def findAngle(x1, y1, x2, y2):
+    theta = m.acos((y2 - y1) * (-y1) / (m.sqrt(
+        (x2 - x1) ** 2 + (y2 - y1) ** 2) * y1))
+    degree = int(180 / m.pi) * theta
+    return degree
 
-# Function to calculate angle
-def find_angle(x1, y1, x2, y2):
-    return m.degrees(m.atan2(y2 - y1, x2 - x1))
+def calculateAngle(landmark1, landmark2, landmark3):
+    x1, y1 = landmark1
+    x2, y2 = landmark2
+    x3, y3 = landmark3
+    angle = m.degrees(m.atan2(y3-y2, x3-x2) - m.atan2(y1-y2, x1-x2))
+    if angle < 0:
+        angle += 360
+    return angle
 
-# Function to draw text on image
-def draw_text(image, text, x, y, color, font_scale):
-    cv2.putText(image, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, 2)
+# Define Streamlit app
+def main():
+    st.title("Yoga Pose Analysis")
+    st.sidebar.header("Options")
+    file_name = st.sidebar.text_input("Enter video file path")
+    cap = cv2.VideoCapture(file_name)
+    stframe = st.empty()
 
-# Function to process image
-def process_image(image):
-    # Convert image to RGB
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-    # Process image with MediaPipe Pose
-    keypoints = pose.process(image)
-
-    # Convert image back to BGR
-    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-
-    return keypoints
-
-# Function to calculate knee angles
-def calculate_knee_angles(landmarks):
-    left_knee_angle = find_angle(landmarks[mpPose.PoseLandmark.LEFT_HIP.value][0], landmarks[mpPose.PoseLandmark.LEFT_HIP.value][1],
-                                 landmarks[mpPose.PoseLandmark.LEFT_KNEE.value][0], landmarks[mpPose.PoseLandmark.LEFT_KNEE.value][1],
-                                 landmarks[mpPose.PoseLandmark.LEFT_ANKLE.value][0], landmarks[mpPose.PoseLandmark.LEFT_ANKLE.value][1])
-
-    right_knee_angle = find_angle(landmarks[mpPose.PoseLandmark.RIGHT_HIP.value][0], landmarks[mpPose.PoseLandmark.RIGHT_HIP.value][1],
-                                 landmarks[mpPose.PoseLandmark.RIGHT_KNEE.value][0], landmarks[mpPose.PoseLandmark.RIGHT_KNEE.value][1],
-                                 landmarks[mpPose.PoseLandmark.RIGHT_ANKLE.value][0], landmarks[mpPose.PoseLandmark.RIGHT_ANKLE.value][1])
-
-    return left_knee_angle, right_knee_angle
-
-# Function to determine posture
-def determine_posture(knee_angles):
-    if knee_angles[0] > GOOD_POSTURE_THRESHOLD and knee_angles[0] < BAD_POSTURE_THRESHOLD or \
-       knee_angles[1] > GOOD_POSTURE_THRESHOLD and knee_angles[1] < BAD_POSTURE_THRESHOLD:
-        return "Good"
-    else:
-        return "Bad"
-
-# Function to send warning
-def send_warning():
-    st.error("Bad posture detected! Please adjust your position.")
-
-# Streamlit app
-st.title("Vrikshasna Posture Detection")
-
-# Load video file
-video_file = st.file_uploader("Select a video file", type=["mp4"])
-
-if video_file:
-    # Initialize video capture
-    cap = cv2.VideoCapture(video_file, apiPreference=cv2.CAP_ANY)
-
-    # Initialize MediaPipe Pose
     mpDraw = mp.solutions.drawing_utils
     mpPose = mp.solutions.pose
     pose = mpPose.Pose(static_image_mode=False, min_detection_confidence=0.5, model_complexity=1)
 
-    # Initialize frame counters
     good_frames = 0
     bad_frames = 0
+    fps = int(cap.get(cv2.CAP_PROP_FPS))
 
     while cap.isOpened():
-        # Capture frame
         success, image = cap.read()
         if not success:
+            st.error("Error reading video stream")
             break
+        h, w = image.shape[:2]
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        keypoints = pose.process(image)
+        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+        lm = keypoints.pose_landmarks
 
-        # Process image
-        keypoints = process_image(image)
-
-        # Calculate knee angles
         landmarks = []
         if keypoints.pose_landmarks:
+            mpDraw.draw_landmarks(image, keypoints.pose_landmarks, mpPose.POSE_CONNECTIONS)
             for landmark in keypoints.pose_landmarks.landmark:
-                landmarks.append((int(landmark.x * image.shape[1]), int(landmark.y * image.shape[0])))
+                landmarks.append((int(landmark.x * w), int(landmark.y * h)))
 
-            left_knee_angle, right_knee_angle = calculate_knee_angles(landmarks)
+        if st.button("Process Frame"):
+            left_knee_angle = calculateAngle(landmarks[mpPose.PoseLandmark.LEFT_HIP.value],
+                                             landmarks[mpPose.PoseLandmark.LEFT_KNEE.value],
+                                             landmarks[mpPose.PoseLandmark.LEFT_ANKLE.value])
+            right_knee_angle = calculateAngle(landmarks[mpPose.PoseLandmark.RIGHT_HIP.value],
+                                              landmarks[mpPose.PoseLandmark.RIGHT_KNEE.value],
+                                              landmarks[mpPose.PoseLandmark.RIGHT_ANKLE.value])
 
-            # Determine posture
-            posture = determine_posture((left_knee_angle, right_knee_angle))
+            angle_text_string = 'left knee : ' + str(int(left_knee_angle)) + '  right knee : ' + str(
+                int(right_knee_angle))
+            feedback = 'Good Job hold still'
+            feedback1 = 'Adjust your knee'
 
-            # Draw text on image
-            if posture == "Good":
-                draw_text(image, "Good Posture", 10, 30, (0, 255, 0), 0.9)
-                good_frames += 1
-            else:
-                draw_text(image, "Bad Posture", 10, 30, (0, 0, 255), 0.9)
-                bad_frames += 1
+            if left_knee_angle > 165 and left_knee_angle < 195 or right_knee_angle > 165 and right_knee_angle < 195:
+                if left_knee_angle > 270 and left_knee_angle < 320 or right_knee_angle > 30 and right_knee_angle < 80:
+                    st.write(angle_text_string)
+                    st.write(feedback)
+                    bad_frames = 0
+                    good_frames += 1
+                else:
+                    st.write(angle_text_string)
+                    st.write(feedback1)
+                    good_frames = 0
+                    bad_frames += 1
 
-            # Calculate time
-            good_time = (1 / cap.get(cv2.CAP_PROP_FPS)) * good_frames
-            bad_time = (1 / cap.get(cv2.CAP_PROP_FPS)) * bad_frames
+            good_time = (1 / fps) * good_frames
+            bad_time = (1 / fps) * bad_frames
 
-            # Draw time on image
             if good_time > 0:
-                draw_text(image, f"Good Posture Time: {int(good_time)}s", 10, 60, (0, 255, 0), 0.9)
+                time_string_good = 'Good Posture Time : ' + str(round(good_time, 1)) + 's'
+                st.write(time_string_good)
             else:
-                draw_text(image, f"Bad Posture Time: {int(bad_time)}s", 10, 60, (0, 0, 255), 0.9)
+                time_string_bad = 'Bad Posture Time : ' + str(round(bad_time, 1)) + 's'
+                st.write(time_string_bad)
 
-            # Send warning
-            if bad_time > BAD_POSTURE_WARNING_TIME:
-                send_warning()
+        stframe.image(image, channels="BGR")
 
-            # Display image
-            st.image(image, channels="BGR")
 
-        if cv2.waitKey(5) & 0xFF == ord('q'):
-            break
-
-    cap.release()
-    cv2.destroyAllWindows()
+if __name__ == "__main__":
+    main()
