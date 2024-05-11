@@ -5,7 +5,6 @@ import streamlit as st
 from io import BytesIO
 import tempfile
 
-
 # Calculate angle
 def calculateAngle(landmark1, landmark2, landmark3):
     x1, y1 = landmark1
@@ -18,7 +17,6 @@ def calculateAngle(landmark1, landmark2, landmark3):
         angle += 360
 
     return angle
-
 
 # Initialize mediapipe pose class
 mpDraw = mp.solutions.drawing_utils
@@ -43,8 +41,6 @@ else:
         cap = cv2.VideoCapture(temp_file.name)
 
 if 'cap' in locals():
-    landmarks = []
-
     while cap.isOpened():
         success, image = cap.read()
         if not success:
@@ -59,18 +55,23 @@ if 'cap' in locals():
             landmarks = [(int(landmark.x * image.shape[1]), int(landmark.y * image.shape[0])) for landmark in
                          keypoints.pose_landmarks.landmark]
 
-        if len(landmarks) > 0:
-            # Calculate angles
-            left_knee_angle = calculateAngle(landmarks[mpPose.PoseLandmark.LEFT_HIP.value],
-                                              landmarks[mpPose.PoseLandmark.LEFT_KNEE.value],
-                                              landmarks[mpPose.PoseLandmark.LEFT_ANKLE.value])
+            if len(landmarks) > 0:
+                # Calculate angles
+                left_knee_angle = calculateAngle(landmarks[mpPose.PoseLandmark.LEFT_HIP.value],
+                                                  landmarks[mpPose.PoseLandmark.LEFT_KNEE.value],
+                                                  landmarks[mpPose.PoseLandmark.LEFT_ANKLE.value])
 
-            right_knee_angle = calculateAngle(landmarks[mpPose.PoseLandmark.RIGHT_HIP.value],
-                                               landmarks[mpPose.PoseLandmark.RIGHT_KNEE.value],
-                                               landmarks[mpPose.PoseLandmark.RIGHT_ANKLE.value])
+                right_knee_angle = calculateAngle(landmarks[mpPose.PoseLandmark.RIGHT_HIP.value],
+                                                   landmarks[mpPose.PoseLandmark.RIGHT_KNEE.value],
+                                                   landmarks[mpPose.PoseLandmark.RIGHT_ANKLE.value])
 
-            # Display angles
-            st.write('Left Knee Angle:', round(left_knee_angle, 2))
-            st.write('Right Knee Angle:', round(right_knee_angle, 2))
+                # Display angles on video
+                cv2.putText(image, f'Left Knee Angle: {round(left_knee_angle, 2)}', (20, 50),
+                            cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
+                cv2.putText(image, f'Right Knee Angle: {round(right_knee_angle, 2)}', (20, 100),
+                            cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
+
+        # Display the resulting frame
+        st.image(image, channels="BGR")
 
     cap.release()
