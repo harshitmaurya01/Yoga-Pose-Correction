@@ -69,7 +69,7 @@ video_file = st.file_uploader("Select a video file", type=["mp4"])
 
 if video_file:
     # Initialize video capture
-    cap = cv2.VideoCapture(file_name, apiPreference=cv2.CAP_ANY)
+    cap = cv2.VideoCapture(video_file, apiPreference=cv2.CAP_ANY)
 
     # Initialize MediaPipe Pose
     mpDraw = mp.solutions.drawing_utils
