@@ -93,4 +93,40 @@ if video_file:
         landmarks = []
         if keypoints.pose_landmarks:
             for landmark in keypoints.pose_landmarks.landmark:
-                landmarks.append((int(landmark.x * image
+                landmarks.append((int(landmark.x * image.shape[1]), int(landmark.y * image.shape[0])))
+
+            left_knee_angle, right_knee_angle = calculate_knee_angles(landmarks)
+
+            # Determine posture
+            posture = determine_posture((left_knee_angle, right_knee_angle))
+
+            # Draw text on image
+            if posture == "Good":
+                draw_text(image, "Good Posture", 10, 30, (0, 255, 0), 0.9)
+                good_frames += 1
+            else:
+                draw_text(image, "Bad Posture", 10, 30, (0, 0, 255), 0.9)
+                bad_frames += 1
+
+            # Calculate time
+            good_time = (1 / cap.get(cv2.CAP_PROP_FPS)) * good_frames
+            bad_time = (1 / cap.get(cv2.CAP_PROP_FPS)) * bad_frames
+
+            # Draw time on image
+            if good_time > 0:
+                draw_text(image, f"Good Posture Time: {int(good_time)}s", 10, 60, (0, 255, 0), 0.9)
+            else:
+                draw_text(image, f"Bad Posture Time: {int(bad_time)}s", 10, 60, (0, 0, 255), 0.9)
+
+            # Send warning
+            if bad_time > BAD_POSTURE_WARNING_TIME:
+                send_warning()
+
+            # Display image
+            st.image(image, channels="BGR")
+
+        if cv2.waitKey(5) & 0xFF == ord('q'):
+            break
+
+    cap.release()
+    cv2.destroyAllWindows()
