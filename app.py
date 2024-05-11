@@ -67,7 +67,7 @@ def main():
                 for landmark in keypoints.pose_landmarks.landmark:
                     landmarks.append((int(landmark.x * w), int(landmark.y * h)))
 
-            if st.button("Process Frame"):
+            if st.button("Process Frame " + str(time.time())):
                 left_knee_angle = calculateAngle(landmarks[mpPose.PoseLandmark.LEFT_HIP.value],
                                                  landmarks[mpPose.PoseLandmark.LEFT_KNEE.value],
                                                  landmarks[mpPose.PoseLandmark.LEFT_ANKLE.value])
