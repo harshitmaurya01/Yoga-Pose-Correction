@@ -40,7 +40,6 @@ def main():
             temp_file_path = temp_file.name
 
         cap = cv2.VideoCapture(temp_file_path)
-        stframe = st.empty()
 
         mpDraw = mp.solutions.drawing_utils
         mpPose = mp.solutions.pose
@@ -49,12 +48,19 @@ def main():
         good_frames = 0
         bad_frames = 0
         fps = int(cap.get(cv2.CAP_PROP_FPS))
+        frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+        output_temp_file = NamedTemporaryFile(delete=False)
+        output_temp_path = output_temp_file.name
+        video_output = cv2.VideoWriter(output_temp_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (frame_width, frame_height))
 
         while cap.isOpened():
             success, image = cap.read()
             if not success:
                 st.error("Error reading video stream")
                 break
+
             h, w = image.shape[:2]
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             keypoints = pose.process(image)
@@ -67,47 +73,49 @@ def main():
                 for landmark in keypoints.pose_landmarks.landmark:
                     landmarks.append((int(landmark.x * w), int(landmark.y * h)))
 
-            if st.button("Process Frame " + str(time.time())):
-                left_knee_angle = calculateAngle(landmarks[mpPose.PoseLandmark.LEFT_HIP.value],
-                                                 landmarks[mpPose.PoseLandmark.LEFT_KNEE.value],
-                                                 landmarks[mpPose.PoseLandmark.LEFT_ANKLE.value])
-                right_knee_angle = calculateAngle(landmarks[mpPose.PoseLandmark.RIGHT_HIP.value],
-                                                  landmarks[mpPose.PoseLandmark.RIGHT_KNEE.value],
-                                                  landmarks[mpPose.PoseLandmark.RIGHT_ANKLE.value])
+            left_knee_angle = calculateAngle(landmarks[mpPose.PoseLandmark.LEFT_HIP.value],
+                                             landmarks[mpPose.PoseLandmark.LEFT_KNEE.value],
+                                             landmarks[mpPose.PoseLandmark.LEFT_ANKLE.value])
+            right_knee_angle = calculateAngle(landmarks[mpPose.PoseLandmark.RIGHT_HIP.value],
+                                              landmarks[mpPose.PoseLandmark.RIGHT_KNEE.value],
+                                              landmarks[mpPose.PoseLandmark.RIGHT_ANKLE.value])
 
-                angle_text_string = 'left knee : ' + str(int(left_knee_angle)) + '  right knee : ' + str(
-                    int(right_knee_angle))
-                feedback = 'Good Job hold still'
-                feedback1 = 'Adjust your knee'
+            angle_text_string = 'left knee : ' + str(int(left_knee_angle)) + '  right knee : ' + str(
+                int(right_knee_angle))
+            feedback = 'Good Job hold still'
+            feedback1 = 'Adjust your knee'
 
-                if left_knee_angle > 165 and left_knee_angle < 195 or right_knee_angle > 165 and right_knee_angle < 195:
-                    if left_knee_angle > 270 and left_knee_angle < 320 or right_knee_angle > 30 and right_knee_angle < 80:
-                        st.write(angle_text_string)
-                        st.write(feedback)
-                        bad_frames = 0
-                        good_frames += 1
-                    else:
-                        st.write(angle_text_string)
-                        st.write(feedback1)
-                        good_frames = 0
-                        bad_frames += 1
-
-                good_time = (1 / fps) * good_frames
-                bad_time = (1 / fps) * bad_frames
-
-                if good_time > 0:
-                    time_string_good = 'Good Posture Time : ' + str(round(good_time, 1)) + 's'
-                    st.write(time_string_good)
+            if left_knee_angle > 165 and left_knee_angle < 195 or right_knee_angle > 165 and right_knee_angle < 195:
+                if left_knee_angle > 270 and left_knee_angle < 320 or right_knee_angle > 30 and right_knee_angle < 80:
+                    st.write(angle_text_string)
+                    st.write(feedback)
+                    bad_frames = 0
+                    good_frames += 1
                 else:
-                    time_string_bad = 'Bad Posture Time : ' + str(round(bad_time, 1)) + 's'
-                    st.write(time_string_bad)
+                    st.write(angle_text_string)
+                    st.write(feedback1)
+                    good_frames = 0
+                    bad_frames += 1
 
-            stframe.image(image, channels="BGR")
+            good_time = (1 / fps) * good_frames
+            bad_time = (1 / fps) * bad_frames
 
-        # Close the temporary file after processing
+            if good_time > 0:
+                time_string_good = 'Good Posture Time : ' + str(round(good_time, 1)) + 's'
+                st.write(time_string_good)
+            else:
+                time_string_bad = 'Bad Posture Time : ' + str(round(bad_time, 1)) + 's'
+                st.write(time_string_bad)
+
+            video_output.write(image)
+
+        # Close the temporary files after processing
         cap.release()
+        video_output.release()
         cv2.destroyAllWindows()
         st.sidebar.text("Uploaded video processed successfully.")
+
+        st.video(output_temp_path)
 
 if __name__ == "__main__":
     main()
