@@ -5,6 +5,25 @@ import time
 import math as m
 import numpy as np
 from tempfile import NamedTemporaryFile
+import subprocess
+
+# Check if libGL.so.1 is present
+def check_libGL():
+    try:
+        subprocess.check_output(["ldconfig", "-p", "|", "grep", "libGL.so.1"])
+        return True
+    except subprocess.CalledProcessError:
+        return False
+
+# Install libGL.so.1
+def install_libGL():
+    subprocess.run(["sudo", "apt", "update"])
+    subprocess.run(["sudo", "apt", "install", "libgl1-mesa-glx"])
+
+# Check and install libGL.so.1 if needed
+if not check_libGL():
+    st.warning("libGL.so.1 is missing. Attempting to install it...")
+    install_libGL()
 
 # Calculate distance
 def findDistance(x1, y1, x2, y2):
